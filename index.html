@@ -104,6 +104,9 @@
       <div class="relative w-full aspect-square bg-black rounded-2xl overflow-hidden border-2 border-slate-700">
         <div id="reader" class="w-full h-full"></div>
         
+        <!-- 💡 新增：相機畫面內建的即時視覺通知 Toast Overlay -->
+        <div id="camera-toast" class="absolute top-4 left-1/2 transform -translate-x-1/2 px-4 py-2.5 rounded-xl text-xs font-bold shadow-2xl z-30 transition-all duration-300 opacity-0 pointer-events-none flex items-center space-x-2 max-w-[90%] text-center justify-center"></div>
+
         <!-- 掃描框輔助線 overlays -->
         <div id="scan-overlay" class="absolute inset-0 border-[40px] border-black/40 flex items-center justify-center pointer-events-none">
           <div class="relative w-full h-full border-2 border-dashed border-indigo-500/80 rounded-lg">
@@ -567,17 +570,45 @@
       // 靜默處理
     }
 
+    // 💡 新增：相機視區即時通知小彈窗函式
+    function showCameraToast(message, type = "success") {
+      const toast = document.getElementById('camera-toast');
+      if (!toast) return;
+
+      if (window.cameraToastTimeout) {
+        clearTimeout(window.cameraToastTimeout);
+      }
+
+      if (type === 'success') {
+        toast.className = "absolute top-4 left-1/2 transform -translate-x-1/2 bg-emerald-500/90 backdrop-blur-md text-white px-4 py-2.5 rounded-xl text-xs font-bold shadow-2xl z-30 transition-all duration-300 opacity-100 flex items-center space-x-2 border border-emerald-400/20 max-w-[90%] text-center justify-center";
+        toast.innerHTML = `<i class="fa-solid fa-circle-check text-sm animate-bounce"></i> <span>已掃入: ${message}</span>`;
+      } else {
+        toast.className = "absolute top-4 left-1/2 transform -translate-x-1/2 bg-rose-500/90 backdrop-blur-md text-white px-4 py-2.5 rounded-xl text-xs font-bold shadow-2xl z-30 transition-all duration-300 opacity-100 flex items-center space-x-2 border border-rose-400/20 max-w-[90%] text-center justify-center";
+        toast.innerHTML = `<i class="fa-solid fa-circle-exclamation text-sm animate-pulse"></i> <span>${message}</span>`;
+      }
+
+      // 2 秒後自動淡出
+      window.cameraToastTimeout = setTimeout(() => {
+        toast.style.opacity = '0';
+      }, 2000);
+    }
+
     // 處理掃碼或手動鍵入的主邏輯
     function processScannedCode(itemCode) {
       // 防呆：已在目前的待出庫清單中，拒絕重複登記
       const isAlreadyInList = pendingItems.some(item => item.itemCode === itemCode);
       if (isAlreadyInList) {
         playSound('error'); 
+        // 💡 同步觸發：相機畫面內彈出紅色重複警告
+        showCameraToast(`貨號 ${itemCode} 已在清單中！`, "error");
         showToast(`貨號 ${itemCode} 已在待確認清單中！`, "error");
         return;
       }
 
       playSound('success');
+      // 💡 同步觸發：相機畫面內彈出綠色成功提示
+      showCameraToast(itemCode, "success");
+      
       addItemToPending(itemCode);
     }
 
