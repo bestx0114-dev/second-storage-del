@@ -61,7 +61,7 @@
         </div>
       </div>
       <!-- 狀態指示燈 -->
-      <div id="connection-status" class="flex items-center space-x-1 bg-amber-950 text-amber-400 px-2.5 py-1 rounded-full text-xs cursor-pointer" onclick="fetchInventoryCache(true)">
+      <div id="connection-status" class="flex items-center space-x-1 bg-amber-950 text-emerald-400 px-2.5 py-1 rounded-full text-xs cursor-pointer" onclick="fetchInventoryCache(true)">
         <span id="status-dot" class="h-2 w-2 rounded-full bg-amber-400 animate-pulse"></span>
         <span id="status-text">初始化中</span>
       </div>
@@ -73,11 +73,11 @@
     
     <!-- 庫存快取狀態條 -->
     <div id="cache-banner" class="bg-slate-800 border border-slate-700/60 rounded-2xl p-3 flex items-center justify-between text-xs">
-      <div class="flex items-center space-x-2">
-        <i class="fa-solid fa-database text-indigo-400"></i>
-        <span id="cache-status-label" class="text-slate-300">正在下載庫存對照表...</span>
+      <div class="flex items-center space-x-2 w-[70%]">
+        <i class="fa-solid fa-database text-indigo-400 shrink-0"></i>
+        <span id="cache-status-label" class="text-slate-300 truncate">正在下載庫存對照表...</span>
       </div>
-      <button onclick="fetchInventoryCache(true)" class="bg-slate-700 hover:bg-slate-600 active:scale-95 px-2 py-1 rounded text-[10px] transition text-indigo-300">
+      <button onclick="fetchInventoryCache(true)" class="bg-slate-700 hover:bg-slate-600 active:scale-95 px-2 py-1 rounded text-[10px] transition text-indigo-300 shrink-0">
         <i class="fa-solid fa-arrows-rotate mr-1"></i>重新整理
       </button>
     </div>
@@ -162,7 +162,7 @@
       </div>
     </div>
 
-    <!-- 💡 新增：手動輸入與外接掃碼槍輸入區 -->
+    <!-- 💡 手動輸入與外接掃碼槍輸入區 -->
     <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-sm space-y-2">
       <div class="flex items-center justify-between">
         <label for="manual-code-input" class="text-xs font-bold text-slate-300 tracking-wider">
@@ -212,7 +212,7 @@
       <button id="checkout-btn" onclick="submitCheckout()" disabled
               class="w-full bg-emerald-600 disabled:bg-slate-800 disabled:text-slate-500 disabled:border-slate-700 disabled:shadow-none hover:bg-emerald-500 active:scale-95 text-white font-bold py-3 px-4 rounded-2xl transition shadow-lg shadow-emerald-500/10 flex items-center justify-center space-x-2">
         <i class="fa-solid fa-circle-check text-lg"></i>
-        <span>請先掃描商品</span>
+        <span>請先輸入商品</span>
       </button>
     </div>
   </div>
@@ -226,7 +226,7 @@
     // 預設的 GAS 部署網址（已填入您提供的最新網址）
     const defaultGasUrl = "https://script.google.com/macros/s/AKfycbyzEG3tnuSb1SoGc2TDZ6T5ZGwH_AaE7Wr0OzrAc73PmT_I5RvxYMhi48fL8WM_peHt/exec";
     
-    // 【新增：庫存對照表快取】 
+    // 庫存對照表快取
     let inventoryCache = {}; 
     let isCacheLoading = false;
 
@@ -291,7 +291,7 @@
       fetchInventoryCache();
     };
 
-    // 【新增：一次性下載並儲存全部庫存名稱】
+    // 一次性下載並儲存全部庫存名稱
     function fetchInventoryCache(isManualRefresh = false) {
       const gasUrl = localStorage.getItem('second_inventory_gas_url');
       if (!gasUrl) return;
@@ -327,7 +327,7 @@
             playSound('success');
           }
           
-          // 如果清單中已有項目（比如之前手動輸入但還沒查到名稱的），進行重新匹配
+          // 如果清單中已有項目，進行重新匹配
           reMatchPendingNames();
         } else {
           bannerLabel.innerHTML = `<span class="text-rose-400"><i class="fa-solid fa-triangle-exclamation mr-1"></i>無法下載庫存表（試算表可能為空）</span>`;
@@ -418,7 +418,7 @@
         html5QrCode = new Html5Qrcode("reader");
       }
 
-      // 【極速對焦優化 2】：提高每秒影格數至 30 fps，並限制掃描格式，精簡解碼引擎
+      // 提高每秒影格數至 30 fps，並限制掃描格式，精簡解碼引擎以加速掃碼
       const config = {
         fps: 30, 
         qrbox: function(width, height) {
@@ -567,7 +567,7 @@
       // 靜默處理
     }
 
-    // 【新增】處理掃碼或手動鍵入的主邏輯
+    // 處理掃碼或手動鍵入的主邏輯
     function processScannedCode(itemCode) {
       // 防呆：已在目前的待出庫清單中，拒絕重複登記
       const isAlreadyInList = pendingItems.some(item => item.itemCode === itemCode);
@@ -585,7 +585,7 @@
     function addItemToPending(itemCode) {
       const id = "item-" + Date.now() + "-" + Math.random().toString(36).substr(2, 5);
       
-      // 【極速對照優化】：不需發送網路請求，直接在本地 Cache 比對！
+      // 極速對照優化：不需發送網路請求，直接在本地 Cache 比對
       let matchedName = "未登記過的商品";
       let status = "success";
 
@@ -609,14 +609,14 @@
       renderPendingList();
     }
 
-    // 【新增】手動輸入控制：按 Enter 發送
+    // 手動輸入控制：按 Enter 發送
     function handleManualInputKeyDown(e) {
       if (e.key === 'Enter') {
         submitManualInput();
       }
     }
 
-    // 【新增】執行手動/掃碼槍輸入提交
+    // 執行手動/掃碼槍輸入提交
     function submitManualInput() {
       const inputEl = document.getElementById('manual-code-input');
       const itemCode = inputEl.value.trim();
@@ -804,143 +804,3 @@
   </script>
 </body>
 </html>
-```
-eof
-
----
-
-### 📌 搭配更新：後端 Google Apps Script（GAS）需要修改！
-
-由於我們要讓前端能夠在一開網頁時，**一次性將所有的貨號品名打包帶走**，您需要把 Google Apps Script 內的程式碼也補上 `"fetchAll"` 的對應。
-
-請直接開啟您的 Google Apps Script，將原有的程式碼替換為以下這份**支援整批極速下載**的新版本：
-
-```javascript
-/**
- * 第二庫存區 - 雙模式 API (獨立 GAS 專案專用版 - 支援極速整批下載)
- * 1. fetchAll (一次性載入)：將整張表的所有貨號與品名打包傳給手機，讓手機本地查表 0 延遲。
- * 2. checkout (批次確認出庫)：傳入已確認的貨號清單，整批進行刪除。
- */
-
-// 您的目標 Google 試算表 ID
-const SPREADSHEET_ID = "1UJwpzZVHIDVLV5j_KrjtVjL5cjPLIUmRV2RxmmwtH1k";
-// 目標工作表名稱
-const SHEET_NAME = "第二庫存登記表";
-
-function doPost(e) {
-  var lock = LockService.getScriptLock();
-  try {
-    // 嘗試取得鎖定，避免寫入衝突
-    lock.waitLock(10000); 
-    
-    var params;
-    if (e.postData && e.postData.contents) {
-      params = JSON.parse(e.postData.contents);
-    } else {
-      params = e.parameter;
-    }
-    
-    var action = params.action; // "fetchAll" 或 "checkout"
-    
-    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    var sheet = ss.getSheetByName(SHEET_NAME);
-    if (!sheet) {
-      sheet = ss.getSheets()[0];
-    }
-    
-    // === 模式 1：一次打包整份 B、C 欄庫存資料 ===
-    if (action === "fetchAll") {
-      var lastRow = sheet.getLastRow();
-      if (lastRow < 2) {
-        return createResponse({"status": "success", "data": {}});
-      }
-      
-      // 讀取 B 欄（貨號）與 C 欄（品名）
-      var range = sheet.getRange(2, 2, lastRow - 1, 2); 
-      var values = range.getValues();
-      var cache = {};
-      
-      for (var i = 0; i < values.length; i++) {
-        var itemCode = String(values[i][0]).trim();
-        var itemName = String(values[i][1]).trim();
-        if (itemCode) {
-          // B欄為 Key，C欄為 Value
-          cache[itemCode] = itemName || "未命名商品";
-        }
-      }
-      
-      return createResponse({
-        "status": "success",
-        "data": cache
-      });
-    }
-    
-    // === 模式 2：確認出庫（整列刪除） ===
-    else if (action === "checkout") {
-      var itemCodes = params.itemCodes;
-      if (!itemCodes || !Array.isArray(itemCodes) || itemCodes.length === 0) {
-        return createResponse({"status": "error", "message": "請提供有效的貨號清單(itemCodes)"});
-      }
-      
-      var lastRow = sheet.getLastRow();
-      if (lastRow < 2) {
-        return createResponse({"status": "error", "message": "試算表中無任何商品資料可刪除"});
-      }
-      
-      var deleteCount = 0;
-      var notFoundCount = 0;
-      
-      for (var k = 0; k < itemCodes.length; k++) {
-        var targetCode = String(itemCodes[k]).trim();
-        var currentLastRow = sheet.getLastRow();
-        if (currentLastRow < 2) break;
-        
-        var range = sheet.getRange(2, 2, currentLastRow - 1, 1);
-        var values = range.getValues();
-        var targetRow = -1;
-        
-        for (var i = 0; i < values.length; i++) {
-          var cellValue = String(values[i][0]).trim();
-          if (cellValue === targetCode) {
-            targetRow = i + 2;
-            break;
-          }
-        }
-        
-        if (targetRow !== -1) {
-          sheet.deleteRow(targetRow);
-          deleteCount++;
-        } else {
-          notFoundCount++;
-        }
-      }
-      
-      return createResponse({
-        "status": "success",
-        "message": "出庫完成",
-        "details": "成功刪除 " + deleteCount + " 筆商品" + (notFoundCount > 0 ? "，有 " + notFoundCount + " 筆貨號在試算表中未找到。" : "。")
-      });
-    }
-    
-    return createResponse({"status": "error", "message": "未知的操作指令"});
-    
-  } catch (error) {
-    return createResponse({"status": "error", "message": "系統錯誤: " + error.toString()});
-    
-  } finally {
-    lock.releaseLock();
-  }
-}
-
-function createResponse(obj) {
-  return ContentService.createTextOutput(JSON.stringify(obj))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-
-function doOptions(e) {
-  return ContentService.createTextOutput("")
-    .setMimeType(ContentService.MimeType.TEXT)
-    .appendHeader("Access-Control-Allow-Origin", "*")
-    .appendHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
-    .appendHeader("Access-Control-Allow-Headers", "Content-Type");
-}
