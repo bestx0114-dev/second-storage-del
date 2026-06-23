@@ -116,8 +116,20 @@
         </div>
       </div>
 
+      <!-- 焦距縮放控制桿 (Zoom Slider) -->
+      <div id="zoom-container" class="mt-3 hidden px-1 animate-fade-in">
+        <div class="flex items-center space-x-3 bg-slate-900/60 border border-slate-700/40 px-3 py-2 rounded-2xl">
+          <i class="fa-solid fa-magnifying-glass-plus text-xs text-indigo-400"></i>
+          <span class="text-xs text-slate-400 whitespace-nowrap">細小條碼縮放:</span>
+          <input type="range" id="zoom-slider" min="1" max="5" step="0.1" value="1"
+                 class="w-full accent-indigo-500 cursor-pointer h-1.5 bg-slate-700 rounded-lg appearance-none" 
+                 oninput="applyZoom(this.value)">
+          <span id="zoom-value" class="text-xs text-indigo-400 font-mono font-bold w-10 text-right">1.0x</span>
+        </div>
+      </div>
+
       <!-- 控制面板 -->
-      <div class="mt-4 flex items-center justify-between px-1">
+      <div class="mt-3 flex items-center justify-between px-1">
         <div class="flex space-x-2">
           <!-- 手電筒開關 -->
           <button id="torch-btn" onclick="toggleTorch()" disabled
@@ -203,7 +215,7 @@
           gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
           osc.stop(audioCtx.currentTime + 0.15);
         } else if (type === 'error') {
-          // 低沉警告音
+          // 低沉警告音（用於刪除或重複掃描等阻礙性動作）
           osc.frequency.setValueAtTime(220, audioCtx.currentTime); // A3
           gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
           osc.start();
@@ -293,7 +305,7 @@
       }
 
       const config = {
-        fps: 15,
+        fps: 20, // 稍微提高每秒影格數以提升小 QR code 補捉率
         qrbox: function(width, height) {
           return { width: width * 0.75, height: height * 0.75 };
         },
@@ -314,14 +326,66 @@
         } else {
           torchButton.disabled = true;
         }
+        
+        // 初始化鏡頭能力控制（焦距與自動對焦）
+        setupCameraCapabilities();
         updateSystemStatus("正在掃描商品", "success");
       })
       .catch((err) => {
         console.error("相機啟動失敗: ", err);
         document.getElementById('camera-placeholder').style.display = 'flex';
-        document.getElementById('scan-toggle-btn').style.none = 'none';
+        document.getElementById('scan-toggle-btn').style.display = 'none';
         alert("無法啟動相機，請確認是否已授予相機權限，且必須在 HTTPS 安全協定下執行。");
       });
+    }
+
+    // 初始化與獲取鏡頭焦距等能力
+    function setupCameraCapabilities() {
+      if (!html5QrCode) return;
+      try {
+        const capabilities = html5QrCode.getRunningTrackCapabilities();
+        const zoomContainer = document.getElementById('zoom-container');
+        const zoomSlider = document.getElementById('zoom-slider');
+
+        // 自動嘗試設定連續自動對焦
+        try {
+          html5QrCode.applyVideoConstraints({
+            advanced: [{ focusMode: "continuous" }]
+          }).catch(e => console.warn("不支援連續對焦設定", e));
+        } catch(e) {}
+
+        // 檢查是否支援 Zoom（數位縮放）
+        if (capabilities.zoom) {
+          zoomContainer.classList.remove('hidden');
+          zoomSlider.min = capabilities.zoom.min || 1;
+          zoomSlider.max = capabilities.zoom.max || 5;
+          zoomSlider.step = capabilities.zoom.step || 0.1;
+          
+          const currentZoom = html5QrCode.getRunningTrackSettings().zoom || 1;
+          zoomSlider.value = currentZoom;
+          document.getElementById('zoom-value').innerText = parseFloat(currentZoom).toFixed(1) + "x";
+        } else {
+          // 若裝置不支援縮放則隱藏拉條
+          zoomContainer.classList.add('hidden');
+        }
+      } catch (err) {
+        console.warn("無法取得相機硬體細部設定能力: ", err);
+      }
+    }
+
+    // 調整 Zoom 數值
+    function applyZoom(value) {
+      if (html5QrCode && isScanning) {
+        html5QrCode.applyVideoConstraints({
+          advanced: [{ zoom: parseFloat(value) }]
+        })
+        .then(() => {
+          document.getElementById('zoom-value').innerText = parseFloat(value).toFixed(1) + "x";
+        })
+        .catch(err => {
+          console.error("無法套用縮放比例: ", err);
+        });
+      }
     }
 
     // 停止相機
@@ -333,6 +397,7 @@
           document.getElementById('camera-placeholder').style.display = 'flex';
           document.getElementById('scan-toggle-btn').style.display = 'none';
           document.getElementById('torch-btn').disabled = true;
+          document.getElementById('zoom-container').classList.add('hidden');
           updateSystemStatus("系統就緒", "success");
         }).catch((err) => {
           console.error("無法停止相機: ", err);
@@ -376,12 +441,15 @@
       const itemCode = decodedText.trim();
       if (!itemCode) return;
 
-      const now = Date.now();
-      
-      // 防止在 1.5 秒內快速重複掃入同一個一模一樣的 QR Code
-      const duplicateInList = pendingItems.find(item => item.itemCode === itemCode && (now - item.timestamp < 1500));
-      if (duplicateInList) return;
+      // 【防呆優化 1】嚴格阻擋：若該貨號已在目前的待出庫清單中，直接拒絕重複登記，不送出請求
+      const isAlreadyInList = pendingItems.some(item => item.itemCode === itemCode);
+      if (isAlreadyInList) {
+        playSound('error'); // 發出低沉警告音
+        showToast(`貨號 ${itemCode} 已在待確認清單中！`, "error");
+        return;
+      }
 
+      // 若完全沒重複，則加入清單中並進行遠端品名查詢
       playSound('success');
       addItemToPending(itemCode);
     }
@@ -606,8 +674,12 @@
 
     // 畫面上自訂浮動通知小視窗 (Toast)
     function showToast(message, type = "success") {
+      // 先刪除可能存在的舊 Toast 避免重疊
+      const oldToasts = document.querySelectorAll('.custom-toast');
+      oldToasts.forEach(t => t.remove());
+
       const toast = document.createElement('div');
-      toast.className = `fixed bottom-24 left-1/2 transform -translate-x-1/2 px-4 py-3 rounded-2xl text-xs font-semibold shadow-2xl z-50 transition-all ${
+      toast.className = `custom-toast fixed bottom-24 left-1/2 transform -translate-x-1/2 px-4 py-3 rounded-2xl text-xs font-semibold shadow-2xl z-50 transition-all ${
         type === 'success' ? 'bg-emerald-500 text-white border border-emerald-400/20' : 'bg-rose-500 text-white border border-rose-400/20'
       }`;
       toast.innerHTML = `<div class="flex items-center space-x-2"><i class="fa-solid ${type === 'success' ? 'fa-circle-check' : 'fa-triangle-exclamation'} text-sm"></i> <span>${message}</span></div>`;
